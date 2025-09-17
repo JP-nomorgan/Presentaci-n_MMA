@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesis de Maestría: Pronóstico de Rendimiento de Cultivos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .step-content {
+            display: none;
+        }
+        .step-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            height: 8px;
+        }
+        .progress-bar-fill {
+            background-color: #3B82F6;
+            height: 8px;
+            border-radius: 9999px;
+            transition: width 0.3s ease-in-out;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        #workflow-modal {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-6 py-4 text-center">
+            <h3 class="text-sm font-semibold text-blue-600">Maestría en Meteorología Agrícola</h3>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mt-1">Pronóstico de Rendimiento de Soja y Maíz para la Pampa Húmeda</h1>
+            <p class="text-base font-medium text-gray-600 mt-2">Presentado por: Ivan Novara y Josep Prado</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 sm:px-6 py-10">
+
+        <!-- Presentation Container -->
+        <div id="presentation-container" class="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+
+            <!-- Progress Bar -->
+            <div class="mb-8">
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+                </div>
+                <div id="step-indicators" class="flex justify-between text-xs sm:text-sm mt-2 text-gray-500">
+                    <span>Intro</span>
+                    <span>Datos</span>
+                    <span>Proceso</span>
+                    <span>Modelo</span>
+                    <span>MLOps</span>
+                    <span>Gobernanza</span>
+                    <span>Salida</span>
+                </div>
+            </div>
+
+            <!-- Step 0: Introduction -->
+            <div id="step-0" class="step-content active text-center">
+                <h2 class="text-3xl md:text-4xl font-extrabold text-blue-600 mb-4">Plataforma para el Pronóstico de Rendimiento</h2>
+                <p class="text-base md:text-lg text-gray-600 max-w-3xl mx-auto mb-8">
+                    Esta es una presentación interactiva del flujo de trabajo propuesto en el trabajo final como parte del curso de Generación y procesamiento de información agronómica, que integra múltiples fuentes de datos, machine learning y MLOps para generar pronósticos de rendimiento de soja y maíz.
+                </p>
+                <i class="fas fa-seedling fa-3x text-green-500 mb-8"></i>
+            </div>
+
+            <!-- Step 1: Data Sources -->
+            <div id="step-1" class="step-content">
+                <h3 class="text-2xl font-bold mb-6 text-center">Paso 1: Fuentes de Información</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                    <div class="bg-gray-50 p-4 rounded-lg border flex flex-col items-center justify-center">
+                        <i class="fas fa-satellite fa-2x text-blue-500 mb-2"></i>
+                        <h4 class="font-semibold">MODIS</h4>
+                        <p class="text-sm text-gray-600">Índices de vegetación (NDVI, EVI) y temperatura (LST).</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg border flex flex-col items-center justify-center">
+                        <i class="fas fa-cloud-rain fa-2x text-cyan-500 mb-2"></i>
+                        <h4 class="font-semibold">CHIRPS</h4>
+                        <p class="text-sm text-gray-600">Datos grillados de precipitación diaria de alta resolución.</p>
+                    </div>
+                     <div class="bg-gray-50 p-4 rounded-lg border flex flex-col items-center justify-center space-y-2">
+                        <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBxAPDxAPDxAQEBAVEA8QEBAPEA8QEA8QFREWFhURFRUYHSggGBolHRUVITEhJSkrLi4uFx8zODMtNygtLisBCgoKDg0OFxAQFysfFx0tLS0tLS0tLS0tLSstLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLf/AABEIAEsAwwMBIgACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQYDBAcCAf/EADUQAAIBAgMECQIFAwUAAAAAAAABAgMEBREhBhIxQVFhcRMigZGhscHRIjLwQmJy4fEUQ1L/xAAaAQEAAwEBAQAAAAAAAAAAAAAAAgMEAQUG/8QAKBEBAQACAAIBAwMDBQAAAAAAAAECAxEEEiExQVFhEyIycYGRobHB/9oADAMBAAIRAxEAPwDuIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMdStGCzkl5sMXadNbfj2IYyxq+06W/4l5I+X2lT/MvJGbGlUqXEM216b+ZeSNm4jBNJuS2PqR1WIs2J27r1Xm0vJmrS4kozeVqsE+j2GWpUqlxDM6rGKWbaS6vQ8G4hS/mS8myu3OIVKvwxbXmX4q/EVeVfDgl8Uv2Y6lO7x0lVb+pFb3s2/HHyM1XFNa/uIlSrdqj4j1V3bT9/iXk2Z6l6urSXmyoPFTk/ElJ+bM3uLfN4nK+n34Y9+pX17UpdX5IxSxlP8AMvJGe5w5Sq+KCT/D/Y163C9H8U5R8t/7MapX5R8VfU+0qf5l5I+X2pS3zXkjPdcKTXxVfQyrXB0F/uS/pFS/IPirolWxr+qkvNmCV7d/aivI36/CFSWy4j5GN+6FVL+V/cRqn+I/HX7V1uIvJb5r7mGV7We1uL89Dfr8H1FsoNmM+5leP4m/RGqfYvx1Ua5rypU8T+HFI+Xu5S2cZPyM/U4bvYfwWbNDh3EZaOSj5s3TjXh8R8dXWqX85fwxS8zH1a1T+Kcu7NvT4SrT1k4ry1NqlwLNr8VRLz3sqZ4s+H+3/Xz1W683rUk/Nj2hVk9UpvybOm0uA6K+KaZt0eFaENsPyZ0Y/H4/7cM+ev+OWrZ1Zayl4RkpcN3Etso+bOtwowWiSXkjYijjY4Y4z4j4q863hKtN6uK82balwLJ/wC5US8tTr4A6I4MeEZ89U6nAZfFPxNmhwLQhsjF+TOgAZuTGcajHp0IQ0jGPkjoPUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB//Z" alt="Logo ORA" class="h-12 object-contain">
+                        <p class="text-sm text-gray-600 mt-auto">Rendimiento histórico (ORA)</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg border flex flex-col items-center justify-center space-y-2">
+                         <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAaVBMVEX///8BAQEAAACGhob6+vrf39/k5OTY2Njs7OzDw8P19fXz8/N7e3v8/PxWVlbj4+NpaWne3t5gYGBISEiYmJjLy8uurq5SUlJTU1NxcXEtLS1ISEg7OzsxMTFiYmKpqamjo6NPT08VFRX3X56ZAAABuUlEQVR4nO3dy27CQBCF4WqLJQgBW7JAS++C//9nHoQkgYqgFVUs9DxNdtM53ZkzsQcAgJa5V3Wc5f49zr/M5222NNT6h4q31j6UUrT6R6k3lSgl2v7+1pckAF94553/DwEBAYEACAIgCIBAABzHC/uX3f/p2Z39hAACAIAACAIgCIBAABQIAQhAABCAAAQAAQgAAmCAAAQAAQgAAmCAAAQAAQhAAIQAAQgAAhCAAJgAAQgAAhCAAJggAAEAACEIAQIQgAAEIAATBAACgAAEIAQIQAAEIAQmgAAEIAQIQgAAEJoAAEIAEIAQIQAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIQgAAEJoAAEIAEIAQIQAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYAICgAAEIAQIgAAEIAQIQgACYgEAAAIgCEIAACED9t/aNlKL9+7u1h90A2i/50b4/AOAWvILoUqAUAAAAAElFTkSuQmCC" alt="Logo INTA" class="h-12 object-contain">
+                        <p class="text-sm text-gray-600 mt-auto">Máscara de cultivo (INTA)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Preprocessing -->
+            <div id="step-2" class="step-content">
+                <h3 class="text-2xl font-bold mb-2 text-center">Paso 2: Preprocesamiento en la Nube con GEE</h3>
+                <p class="text-center text-gray-600 mb-8 max-w-3xl mx-auto">Se utiliza <span class="font-bold text-green-600">Google Earth Engine (GEE)</span>, una plataforma de computación en la nube para análisis geoespacial, para procesar eficientemente grandes volúmenes de datos.</p>
+                
+                <div class="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0 relative">
+                    <div class="w-full md:w-1/3 text-center">
+                        <h4 class="font-semibold mb-3 text-lg">A. Ingesta de Datos</h4>
+                        <div class="space-y-3 p-4">
+                            <div class="flex items-center bg-gray-50 p-2 rounded-lg border shadow-sm"><i class="fas fa-satellite text-blue-500 w-8 text-center"></i><span class="ml-3 text-sm font-medium">Imágenes MODIS</span></div>
+                             <div class="flex items-center bg-gray-50 p-2 rounded-lg border shadow-sm"><i class="fas fa-cloud-rain text-cyan-500 w-8 text-center"></i><span class="ml-3 text-sm font-medium">Datos CHIRPS</span></div>
+                             <div class="flex items-center bg-gray-50 p-2 rounded-lg border shadow-sm"><i class="fas fa-map-marked-alt text-green-600 w-8 text-center"></i><span class="ml-3 text-sm font-medium">Vectores (Partidos)</span></div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-auto text-center px-4"><i class="fas fa-arrow-down md:fa-arrow-right fa-2x text-gray-300"></i></div>
+                    <div class="w-full md:w-1/3 text-center bg-white p-4 rounded-lg">
+                        <h4 class="font-semibold mb-3 text-lg pt-10">B. Procesamiento en GEE</h4>
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3 space-y-2 text-left text-sm mt-3">
+                            <p><i class="fas fa-check-circle text-green-500 mr-2"></i><strong>Enmascaramiento:</strong> Aplicar polígonos de cultivo.</p>
+                            <p><i class="fas fa-check-circle text-green-500 mr-2"></i><strong>Extracción:</strong> Generar series temporales de NDVI, LST.</p>
+                            <p><i class="fas fa-check-circle text-green-500 mr-2"></i><strong>Cálculo:</strong> Calcular promedios y acumulados estacionales.</p>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-auto text-center px-4"><i class="fas fa-arrow-down md:fa-arrow-right fa-2x text-gray-300"></i></div>
+                    <div class="w-full md:w-1/3 text-center">
+                        <h4 class="font-semibold mb-3 text-lg">C. Salida de Datos</h4>
+                        <div class="p-4">
+                            <i class="fas fa-table fa-5x text-blue-600"></i>
+                            <p class="mt-3 text-sm font-semibold">Tabla de Datos Limpia</p>
+                            <p class="text-xs text-gray-500">(formato CSV para BBDD)</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Model Training -->
+            <div id="step-3" class="step-content">
+                <h3 class="text-2xl font-bold mb-6 text-center">Paso 3: Entrenamiento de Modelos de Machine Learning</h3>
+                 <div class="md:flex md:space-x-8">
+                    <div class="md:w-1/3 mb-8 md:mb-0">
+                        <h4 class="text-lg font-semibold mb-2">Selección de Algoritmo</h4>
+                        <p class="text-sm text-gray-600 mb-4">Simule el entrenamiento y compare el rendimiento de diferentes modelos.</p>
+                        <select id="model-selector" class="w-full p-2 border rounded-md bg-white">
+                            <option value="ols">Regresión Lineal (OLS)</option>
+                            <option value="rf">Random Forest</option>
+                            <option value="lstm" selected>Red Neuronal LSTM</option>
+                        </select>
+                        <button id="train-button" class="mt-4 w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300">Simular Entrenamiento</button>
+                    </div>
+                    <div class="md:w-2/3">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-lg font-semibold">Comparativa de Rendimiento</h4>
+                            <button id="explain-model-button" class="bg-purple-100 text-purple-700 text-xs font-bold py-1 px-3 rounded-full hover:bg-purple-200 transition">
+                                ✨ Explicar modelo con IA
+                            </button>
+                        </div>
+                        <canvas id="modelComparisonChart"></canvas>
+                        <div id="model-explanation-box" class="mt-4 p-4 bg-gray-50 rounded-lg border text-sm text-gray-700" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: MLOps -->
+            <div id="step-4" class="step-content">
+                <h3 class="text-2xl font-bold mb-8 text-center">Paso 4: MLOps y Operacionalización</h3>
+                <div class="bg-gray-50 p-6 rounded-lg border">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center items-center">
+                        <div><i class="fab fa-github fa-3x text-gray-800"></i><h5 class="font-bold mt-2">1. Control de Versiones</h5><p class="text-sm text-gray-600">Código y modelos versionados en GitHub.</p></div>
+                        <div class="text-2xl text-gray-400">&rarr;</div>
+                        <div><i class="fas fa-cogs fa-3x text-yellow-500"></i><h5 class="font-bold mt-2">2. CI/CD & Automatización</h5><p class="text-sm text-gray-600">GitHub Actions para entrenamiento y despliegue automático.</p></div>
+                    </div>
+                    <div class="text-2xl text-gray-400 text-center my-4">&darr;</div>
+                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-center items-center">
+                        <div><i class="fab fa-aws fa-3x text-orange-500"></i><h5 class="font-bold mt-2">3. Despliegue en la Nube (AWS)</h5><p class="text-sm text-gray-600">Modelos servidos vía API REST (API Gateway + Lambda).</p></div>
+                        <div class="text-2xl text-gray-400">&rarr;</div>
+                        <div><i class="fas fa-chart-area fa-3x text-purple-500"></i><h5 class="font-bold mt-2">4. Monitoreo</h5><p class="text-sm text-gray-600">Monitoreo de performance (drift) con Amazon CloudWatch.</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Data Governance -->
+            <div id="step-5" class="step-content">
+                <h3 class="text-2xl font-bold mb-6 text-center">Paso 5: Estrategia de Gobernanza de Datos</h3>
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200"><h4 class="font-semibold text-blue-800 mb-2"><i class="fas fa-check-circle mr-2"></i>Calidad y Trazabilidad</h4><p class="text-sm text-gray-700">Validaciones automáticas en la ingesta de datos. Metadatos de origen, transformaciones y versión para cada dato y modelo.</p></div>
+                    <div class="bg-green-50 p-4 rounded-lg border border-green-200"><h4 class="font-semibold text-green-800 mb-2"><i class="fas fa-shield-alt mr-2"></i>Seguridad y Acceso</h4><p class="text-sm text-gray-700">Acceso a la API restringido por claves (API Keys). Almacenamiento seguro y acceso a la BBDD limitado por roles.</p></div>
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200"><h4 class="font-semibold text-yellow-800 mb-2"><i class="fas fa-book-open mr-2"></i>Documentación y Reutilización</h4><p class="text-sm text-gray-700">Catálogo de datos documentando cada fuente para promover el uso consistente y la reutilización por diferentes equipos.</p></div>
+                </div>
+            </div>
+
+            <!-- Step 6: Final Output -->
+            <div id="step-6" class="step-content">
+                <h3 class="text-2xl font-bold mb-6 text-center">Paso 6: Plataforma de Salida</h3>
+                 <!-- Tab Buttons -->
+                <div class="mb-4 border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button id="tab-btn-dashboard" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600">
+                            <i class="fas fa-chart-bar mr-2"></i>Dashboard Interactivo
+                        </button>
+                        <button id="tab-btn-api" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                           <i class="fas fa-code mr-2"></i>Ejemplo de API
+                        </button>
+                    </nav>
+                </div>
+                <!-- Tab Content -->
+                <div id="tab-content-dashboard" class="tab-content active">
+                     <div class="grid lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-1 bg-gray-50 p-6 rounded-lg border">
+                            <h4 class="font-semibold mb-4">Configuración de Consulta</h4>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="db-partido" class="block text-sm font-medium text-gray-700">Partido</label>
+                                    <select id="db-partido" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option>Pergamino</option>
+                                        <option>Rojas</option>
+                                        <option>Junín</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="db-crop" class="block text-sm font-medium text-gray-700">Cultivo</label>
+                                    <select id="db-crop" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option>Soja</option>
+                                        <option>Maíz</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="db-year" class="block text-sm font-medium text-gray-700">Campaña a Pronosticar</label>
+                                    <select id="db-year" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                                        <option>2024/25</option>
+                                        <option>2023/24</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="lg:col-span-2">
+                            <canvas id="dashboardChart"></canvas>
+                            <div id="dashboard-summary" class="mt-4 bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-lg text-center text-sm"></div>
+                             <div class="mt-4 text-center">
+                                 <button id="generate-analysis-button" class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold py-2 px-6 rounded-md hover:opacity-90 transition duration-300">
+                                    ✨ Generar Análisis y Recomendaciones
+                                </button>
+                            </div>
+                            <div id="ai-analysis-box" class="mt-4 p-4 bg-gray-50 rounded-lg border" style="display: none;">
+                                <!-- AI content will go here -->
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2 text-center">Fuente de datos históricos: Dirección Nacional de Agricultura - Dirección de Estimaciones Agrícolas.</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-content-api" class="tab-content">
+                    <h4 class="text-lg font-semibold mb-2">Acceso Programático vía API REST</h4>
+                    <p class="text-sm text-gray-600 mb-4">La plataforma ofrece una API REST para integrar los pronósticos en sistemas de terceros (cooperativas, aseguradoras, etc.).</p>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ejemplo de Petición GET:</label>
+                        <div class="flex items-center">
+                            <pre class="w-full bg-gray-800 text-white p-3 rounded-l-md text-sm font-mono overflow-x-auto"><code id="api-request-code">https://api.pronostico-agro.com/v1/yield?partido=Pergamino&cultivo=Soja&campana=2024-25&apikey=...</code></pre>
+                            <button id="copy-api-button" class="bg-gray-600 text-white px-3 py-3 rounded-r-md hover:bg-gray-700 text-sm"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Respuesta JSON:</label>
+                        <pre class="bg-gray-800 text-white p-4 rounded-md text-xs font-mono overflow-x-auto"><code>{
+  "request_info": {
+    "partido": "Pergamino",
+    "cultivo": "Soja",
+    "campana": "2024/25",
+    "timestamp": "2025-09-17T12:15:00Z"
+  },
+  "pronostico": {
+    "valor_kg_ha": 4030,
+    "modelo": "LSTM_v1.2",
+    "fecha_actualizacion": "2025-09-15"
+  },
+  "historico_kg_ha": {
+    "2019/20": 3750,
+    "2020/21": 3180,
+    "2021/22": 3450,
+    "2022/23": 1850,
+    "2023/24": 4020
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="mt-10 flex justify-between">
+                <button id="prev-button" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-md hover:bg-gray-400 transition duration-300 disabled:opacity-50" disabled><i class="fas fa-arrow-left mr-2"></i>Anterior</button>
+                <button id="next-button" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-md hover:bg-blue-700 transition duration-300">Siguiente<i class="fas fa-arrow-right ml-2"></i></button>
+                 <button id="restart-button" class="bg-green-600 text-white font-bold py-2 px-6 rounded-md hover:bg-green-700 transition duration-300 hidden">Reiniciar Presentación<i class="fas fa-redo ml-2"></i></button>
+            </div>
+        </div>
+        
+         <!-- Bibliografía -->
+        <section id="bibliografia" class="mt-12 bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Bibliografía de Referencia</h2>
+            <ul class="space-y-2 text-sm text-gray-600 list-disc list-inside">
+                <li>Schwalbert, R. A., et al. (2020). Satellite-based soybean yield forecast: Integrating machine learning and weather data for improving crop yield prediction in southern Brazil. <i>Agricultural and Forest Meteorology</i>, 284, 107886.</li>
+                <li>Croci, M., et al. (2023). Dynamic Maize Yield Predictions Using Machine Learning on Multi-Source Data. <i>Remote Sensing</i>, 15(1), 100.</li>
+                <li>Gorelick, N., et al. (2017). Google Earth Engine: Planetary-scale geospatial analysis for everyone. <i>Remote Sensing of Environment</i>, 202, 18-27.</li>
+            </ul>
+        </section>
+    </main>
+    
+    <!-- Floating Workflow Button -->
+    <button id="show-workflow-button" title="Ver Flujo de Trabajo" class="fixed bottom-6 right-6 bg-blue-600 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition z-50">
+        <i class="fas fa-project-diagram fa-lg"></i>
+    </button>
+
+    <!-- Workflow Modal -->
+    <div id="workflow-modal" class="fixed inset-0 bg-black bg-opacity-70 z-50 hidden items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-4xl w-full relative transform transition-all scale-95 opacity-0" id="workflow-modal-content">
+            <button id="close-workflow-button" class="absolute -top-4 -right-4 bg-white text-gray-700 rounded-full h-10 w-10 flex items-center justify-center text-2xl font-bold border-2 border-gray-300 hover:bg-gray-100">&times;</button>
+            <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAeQBQADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX9jZ2uLj5OXm5+jp6vLz1NXW19jZ2uPub+28/f/9oADAMBAAIRAxEAPwD54ooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigA//2Q==" alt="Workflow del Proyecto" class="rounded-lg w-full max-h-[85vh]">
+        </div>
+-    </div>
+
+    <footer class="text-center py-6 text-sm text-gray-500">
+        <p>Maestría en Meteorología Agrícola</p>
+        <p>&copy; 2025 Ivan Novara y Josep Prado</p>
+    </footer>
+
+    <script>
+        const apiKey = ""; // La API Key es manejada por el entorno
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // Función auxiliar para llamar a la API de Gemini con reintentos
+        async function callGemini(prompt, retries = 3, delay = 1000) {
+            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    const result = await response.json();
+                    if (result.candidates && result.candidates[0].content?.parts?.[0]?.text) {
+                        return result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("Respuesta inválida de la API de Gemini.");
+                    }
+                } catch (error) {
+                    console.error(`Intento ${i + 1} fallido:`, error);
+                    if (i < retries - 1) {
+                        await new Promise(res => setTimeout(res, delay));
+                        delay *= 2; // Backoff exponencial
+                    } else {
+                        return `<p class="text-red-500">Error al contactar el servicio de IA. Por favor, intente de nuevo más tarde.</p>`;
+                    }
+                }
+            }
+        }
+
+        const steps = document.querySelectorAll('.step-content');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const restartButton = document.getElementById('restart-button');
+        const progressBar = document.getElementById('progress-bar');
+        const stepIndicators = document.getElementById('step-indicators').children;
+        
+        let currentStep = 0;
+        const totalSteps = steps.length;
+
+        function updatePresentation() {
+            steps.forEach((step, index) => step.classList.toggle('active', index === currentStep));
+            prevButton.disabled = currentStep === 0;
+            nextButton.classList.toggle('hidden', currentStep === totalSteps - 1);
+            restartButton.classList.toggle('hidden', currentStep !== totalSteps - 1);
+            progressBar.style.width = `${(currentStep / (totalSteps - 1)) * 100}%`;
+            Array.from(stepIndicators).forEach((el, i) => {
+                el.classList.toggle('text-blue-600', i <= currentStep);
+                el.classList.toggle('font-bold', i === currentStep);
+            });
+        }
+
+        nextButton.addEventListener('click', () => { if (currentStep < totalSteps - 1) { currentStep++; updatePresentation(); } });
+        prevButton.addEventListener('click', () => { if (currentStep > 0) { currentStep--; updatePresentation(); } });
+        restartButton.addEventListener('click', () => { currentStep = 0; updatePresentation(); });
+        
+        // --- Model Training Simulation ---
+        const modelSelector = document.getElementById('model-selector');
+        const trainButton = document.getElementById('train-button');
+        const explainModelButton = document.getElementById('explain-model-button');
+        const modelExplanationBox = document.getElementById('model-explanation-box');
+        let modelChart;
+        const modelData = {
+            ols: { mae: 420, rmse: 570, r2: 0.65 },
+            rf: { mae: 320, rmse: 400, r2: 0.78 },
+            lstm: { mae: 240, rmse: 320, r2: 0.85 }
+        };
+
+        function createModelChart() {
+            const ctx = document.getElementById('modelComparisonChart').getContext('2d');
+            modelChart = new Chart(ctx, {
+                type: 'bar', data: { labels: ['MAE (Kg/ha)', 'RMSE (Kg/ha)', 'R²'], datasets: [] },
+                options: {
+                    indexAxis: 'y', responsive: true, plugins: { legend: { position: 'top' } },
+                    scales: { x: { beginAtZero: true, max: 600 } }
+                }
+            });
+        }
+        
+        trainButton.addEventListener('click', () => {
+            trainButton.disabled = true; trainButton.textContent = 'Simulando...';
+            setTimeout(() => {
+                const selectedModel = modelSelector.value, data = modelData[selectedModel], r2_scaled = data.r2 * 600;
+                const newDataset = {
+                    label: modelSelector.options[modelSelector.selectedIndex].text,
+                    data: [data.mae, data.rmse, r2_scaled],
+                    backgroundColor: `rgba(${Math.random()*150 + 50}, ${Math.random()*150 + 50}, ${Math.random()*150+50}, 0.7)`,
+                    realR2: data.r2
+                };
+                const existingIndex = modelChart.data.datasets.findIndex(ds => ds.label === newDataset.label);
+                if (existingIndex === -1) { modelChart.data.datasets.push(newDataset); } 
+                else { modelChart.data.datasets[existingIndex] = newDataset; }
+                modelChart.options.plugins.tooltip = {
+                    callbacks: { label: c => `${c.dataset.label || ''}: ${c.label === 'R²' ? c.dataset.realR2.toFixed(2) : c.parsed.x.toFixed(0) + ' Kg/ha'}` }
+                }
+                modelChart.update();
+                trainButton.disabled = false; trainButton.textContent = 'Simular Entrenamiento';
+            }, 1000);
+        });
+
+        explainModelButton.addEventListener('click', async () => {
+            const selectedModel = modelSelector.options[modelSelector.selectedIndex].text;
+            modelExplanationBox.style.display = 'block';
+            modelExplanationBox.innerHTML = `<p class="text-gray-500 animate-pulse">Generando explicación con IA...</p>`;
+
+            const prompt = `Explica de forma muy sencilla para una audiencia no técnica qué es un modelo de ${selectedModel} y por qué se usaría para pronosticar el rendimiento de cultivos. Limita la respuesta a un párrafo corto (2-4 frases).`;
+            
+            const explanation = await callGemini(prompt);
+            modelExplanationBox.innerHTML = explanation;
+        });
+        
+        // --- Dashboard and API Tabs ---
+        const tabBtnDashboard = document.getElementById('tab-btn-dashboard');
+        const tabBtnApi = document.getElementById('tab-btn-api');
+        const tabContentDashboard = document.getElementById('tab-content-dashboard');
+        const tabContentApi = document.getElementById('tab-content-api');
+        
+        tabBtnDashboard.addEventListener('click', () => {
+            tabBtnDashboard.classList.add('border-blue-500', 'text-blue-600');
+            tabBtnDashboard.classList.remove('border-transparent', 'text-gray-500');
+            tabBtnApi.classList.add('border-transparent', 'text-gray-500');
+            tabBtnApi.classList.remove('border-blue-500', 'text-blue-600');
+            tabContentDashboard.classList.add('active');
+            tabContentApi.classList.remove('active');
+        });
+        tabBtnApi.addEventListener('click', () => {
+            tabBtnApi.classList.add('border-blue-500', 'text-blue-600');
+            tabBtnApi.classList.remove('border-transparent', 'text-gray-500');
+            tabBtnDashboard.classList.add('border-transparent', 'text-gray-500');
+            tabBtnDashboard.classList.remove('border-blue-500', 'text-blue-600');
+            tabContentApi.classList.add('active');
+            tabContentDashboard.classList.remove('active');
+        });
+        
+        // --- Dashboard Chart and AI Analysis ---
+        const dbPartido = document.getElementById('db-partido'), dbCrop = document.getElementById('db-crop'), dbYear = document.getElementById('db-year');
+        const dashboardSummary = document.getElementById('dashboard-summary');
+        const generateAnalysisButton = document.getElementById('generate-analysis-button');
+        const aiAnalysisBox = document.getElementById('ai-analysis-box');
+        let dashboardChart;
+        const historicalData = {
+            'Pergamino': {'Soja': {'2019/20': 3750, '2020/21': 3180, '2021/22': 3450, '2022/23': 1850, '2023/24': 4020}, 'Maíz': {'2019/20': 9500, '2020/21': 8800, '2021/22': 9200, '2022/23': 7500, '2023/24': 10100}},
+            'Rojas': {'Soja': {'2019/20': 3600, '2020/21': 3050, '2021/22': 3300, '2022/23': 1700, '2023/24': 3900}, 'Maíz': {'2019/20': 9200, '2020/21': 8600, '2021/22': 9000, '2022/23': 7200, '2023/24': 9800}},
+            'Junín': {'Soja': {'2019/20': 3400, '2020/21': 2900, '2021/22': 3100, '2022/23': 1600, '2023/24': 3750}, 'Maíz': {'2019/20': 8900, '2020/21': 8300, '2021/22': 8800, '2022/23': 7000, '2023/24': 9500}}
+        };
+        const forecastData = {
+            '2024/25': {'Pergamino': {'Soja': 4030, 'Maíz': 10500}, 'Rojas': {'Soja': 3950, 'Maíz': 10200}, 'Junín': {'Soja': 3800, 'Maíz': 9900}},
+            '2023/24': {'Pergamino': {'Soja': 4020, 'Maíz': 10100}, 'Rojas': {'Soja': 3900, 'Maíz': 9800}, 'Junín': {'Soja': 3750, 'Maíz': 9500}}
+        };
+
+        function createDashboardChart() {
+            const ctx = document.getElementById('dashboardChart').getContext('2d');
+            dashboardChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true, ticks: { callback: v => `${v} Kg/ha` } } } } });
+        }
+
+        function updateDashboard() {
+            aiAnalysisBox.style.display = 'none'; // Hide AI box on change
+            const partido = dbPartido.value, crop = dbCrop.value, year = dbYear.value;
+            const history = historicalData[partido][crop], forecast = forecastData[year][partido][crop];
+            const labels = Object.keys(history), historyValues = Object.values(history);
+            dashboardChart.data.labels = [...labels, year + ' (Pronóstico)'];
+            dashboardChart.data.datasets = [ { label: 'Rendimiento Histórico (Kg/ha)', data: [...historyValues, null], backgroundColor: 'rgba(107, 114, 128, 0.6)' }, { label: 'Pronóstico (Kg/ha)', data: [...new Array(labels.length).fill(null), forecast], backgroundColor: 'rgba(59, 130, 246, 0.8)' } ];
+            dashboardChart.update();
+            const avgHistory = historyValues.reduce((a, b) => a + b, 0) / historyValues.length;
+            const percentageDiff = ((forecast - avgHistory) / avgHistory) * 100;
+            const diffText = percentageDiff >= 0 ? `<span class="font-bold text-green-600">${percentageDiff.toFixed(0)}% por encima</span>` : `<span class="font-bold text-red-600">${Math.abs(percentageDiff).toFixed(0)}% por debajo</span>`;
+            dashboardSummary.innerHTML = `El pronóstico para la campaña <span class="font-bold">${year}</span> es de <span class="font-bold">${forecast} Kg/ha</span>, un ${diffText} del promedio histórico de ${historyValues.length} años.`;
+        }
+        
+        generateAnalysisButton.addEventListener('click', async () => {
+            aiAnalysisBox.style.display = 'block';
+            aiAnalysisBox.innerHTML = `<p class="text-gray-500 animate-pulse">✨ Analizando el pronóstico y generando recomendaciones...</p>`;
+            const partido = dbPartido.value, crop = dbCrop.value, year = dbYear.value;
+            const forecast = forecastData[year][partido][crop], history = historicalData[partido][crop];
+            const historyValues = Object.values(history);
+            const avgHistory = historyValues.reduce((a, b) => a + b, 0) / historyValues.length;
+            let historyString = Object.entries(history).map(([key, value]) => `Campaña ${key}: ${value} Kg/ha`).join('\n');
+            const prompt = `Actúa como un asesor agrónomo experto y conciso. La información es para un productor agrícola en Argentina.\n\nContexto:\n- Partido: ${partido}\n- Cultivo: ${crop}\n- Campaña a pronosticar: ${year}\n- Rendimiento pronosticado: ${forecast} Kg/ha\n- Rendimiento promedio histórico (últimos ${historyValues.length} años): ${Math.round(avgHistory)} Kg/ha\n- Detalle de rendimientos históricos:\n${historyString}\n\nTarea:\nGenera un breve análisis del pronóstico y una lista de 2 o 3 recomendaciones prácticas. El tono debe ser profesional pero fácil de entender. La respuesta debe estar en formato HTML simple. No incluyas \`\`\`html.\n\nFormato de la respuesta:\n<h5 class="font-semibold text-gray-800 mb-2">Análisis del Pronóstico</h5>\n<p class="text-gray-600 mb-4">Un párrafo de 2-3 frases analizando el pronóstico en comparación con el histórico.</p>\n<h5 class="font-semibold text-gray-800 mb-2">Recomendaciones</h5>\n<ul class="list-disc list-inside space-y-1 text-gray-600">\n    <li>Recomendación 1</li>\n    <li>Recomendación 2</li>\n</ul>\n<p class="text-xs text-gray-400 mt-4"><i>Análisis generado por IA. Verificar la información antes de tomar decisiones.</i></p>`;
+            const analysis = await callGemini(prompt);
+            aiAnalysisBox.innerHTML = analysis;
+        });
+
+        [dbPartido, dbCrop, dbYear].forEach(el => el.addEventListener('change', updateDashboard));
+
+        // --- API Copy Button ---
+        const copyApiButton = document.getElementById('copy-api-button');
+        const apiRequestCode = document.getElementById('api-request-code');
+        copyApiButton.addEventListener('click', () => {
+            const textToCopy = apiRequestCode.textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                copyApiButton.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => { copyApiButton.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
+            });
+        });
+
+        // --- Workflow Modal Logic ---
+        const showWorkflowButton = document.getElementById('show-workflow-button');
+        const workflowModal = document.getElementById('workflow-modal');
+        const workflowModalContent = document.getElementById('workflow-modal-content');
+        const closeWorkflowButton = document.getElementById('close-workflow-button');
+
+        showWorkflowButton.addEventListener('click', () => {
+            workflowModal.classList.remove('hidden');
+            setTimeout(() => {
+                workflowModalContent.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+        });
+
+        function hideModal() {
+            workflowModalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                workflowModal.classList.add('hidden');
+            }, 300);
+        }
+
+        closeWorkflowButton.addEventListener('click', hideModal);
+        workflowModal.addEventListener('click', (e) => {
+            if (e.target === workflowModal) {
+                hideModal();
+            }
+        });
+        
+        // Initial calls
+        window.onload = () => {
+            updatePresentation();
+            createModelChart();
+            createDashboardChart();
+            updateDashboard();
+        };
+    </script>
+</body>
+</html>
+
